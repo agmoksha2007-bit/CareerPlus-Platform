@@ -79,6 +79,12 @@ class UserNotFoundError(AppError):
     status_code = status.HTTP_404_NOT_FOUND
     error_code = "user_not_found"
 
+class CareerVaultItemNotFoundError(AppError):
+    """Raised when a requested CareerVault item doesn't exist, or doesn't
+    belong to the requesting user."""
+    status_code = 404
+    error_code = "career_vault_item_not_found"
+
 
 # ======================================================================
 # Exception handlers

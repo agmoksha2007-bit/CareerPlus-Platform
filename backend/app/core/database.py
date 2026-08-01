@@ -18,6 +18,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
 from app.models.user import User
+from app.models.career_vault import CareerVaultItem
 
 # Module-level reference to the Motor client so close_database_connection()
 # can reach it. Starts as None; set inside connect_to_database(). Kept at
@@ -42,6 +43,7 @@ async def connect_to_database() -> None:
         database=_client[settings.MONGODB_DB_NAME],
         document_models=[
             User,
+            CareerVaultItem,
             # Future-milestone models are added here ONLY when their
             # milestone is built — e.g. CareerVaultItem in Milestone 2,
             # SkillTaxonomyEntry / UserSkillProfile in Milestone 3.
