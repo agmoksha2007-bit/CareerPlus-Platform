@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.database import close_database_connection, connect_to_database
 from app.core.exceptions import register_exception_handlers
 from app.core.limiter import limiter
-from app.routers import auth,career_vault, users
+from app.routers import auth,career_vault, skill, users
 
 
 @asynccontextmanager
@@ -114,6 +114,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
 app.include_router(career_vault.router,prefix=settings.API_V1_PREFIX,)
+app.include_router(skill.router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/")
 async def root() -> dict[str, str]:

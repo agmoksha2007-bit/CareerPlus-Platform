@@ -85,6 +85,24 @@ class CareerVaultItemNotFoundError(AppError):
     status_code = 404
     error_code = "career_vault_item_not_found"
 
+class SkillTaxonomyEntryNotFoundError(AppError):
+    """Raised when a requested taxonomy entry doesn't exist — including
+    when referenced indirectly, e.g. a signal reporting a skill_id that
+    has no matching taxonomy entry."""
+    status_code = 404
+    error_code = "skill_taxonomy_entry_not_found"
+
+class SkillNameAlreadyExistsError(AppError):
+    """Raised when creating a taxonomy entry whose name collides with an
+    existing entry. The real enforcement is the unique index on
+    SkillTaxonomyEntry.name (Step 1) — this exists to translate the
+    resulting DuplicateKeyError into the same clean, structured error
+    shape every other domain exception in this codebase produces,
+    matching how EmailAlreadyRegisteredError relates to User.email's
+    unique index in Milestone 1."""
+    status_code = 409
+    error_code = "skill_name_already_exists"
+
 
 # ======================================================================
 # Exception handlers
