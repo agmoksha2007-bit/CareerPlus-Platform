@@ -103,6 +103,22 @@ class SkillNameAlreadyExistsError(AppError):
     status_code = 409
     error_code = "skill_name_already_exists"
 
+class AssessmentAttemptNotFoundError(AppError):
+    """
+    Raised when a requested assessment attempt doesn't exist,
+    or doesn't belong to the requesting user.
+    """
+    status_code = 404
+    error_code = "assessment_attempt_not_found"
+
+
+class AssessmentAlreadyCompletedError(AppError):
+    """
+    Raised when attempting to modify an assessment
+    that has already been completed.
+    """
+    status_code = 409
+    error_code = "assessment_already_completed"
 
 # ======================================================================
 # Exception handlers
