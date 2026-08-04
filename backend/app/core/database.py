@@ -5,22 +5,24 @@ Owns the MongoDB connection lifecycle for the application: opening a single
 Motor client at process startup and closing it at shutdown, and registering
 every Beanie document model so the ODM knows what collections exist.
 
-Called exactly once at startup, via main.py's lifespan handler (a later
-step) — never per-request. Opening a new Motor client per request would
-exhaust connections under any real load.
+Called exactly once at startup, via main.py's lifespan handler. Never
+per-request — opening a new Motor client per request would exhaust
+connections under any real load.
 
-Only Milestone-1 models are registered here. Future-milestone models
-(career_vault, skills, etc.) must not be added until their own milestone
-is built, per the "no future-milestone code" rule.
+Only Milestone-1 through Milestone-5 models are registered here so far.
+Future-milestone models (AI Mentor, etc.) must not be added until their
+own milestone is built, per the "no future-milestone code" rule.
 """
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
-from app.models.user import User
-from app.models.career_vault import CareerVaultItem
-from app.models.skill import SkillTaxonomyEntry, UserSkillProfile
 from app.models.career_assessment import AssessmentAttempt
+from app.models.career_guidance import GuidanceRecommendation
+from app.models.career_vault import CareerVaultItem
+from app.models.roadmap import RoadmapTemplate, UserRoadmapProgress
+from app.models.skill import SkillTaxonomyEntry, UserSkillProfile
+from app.models.user import User
 
 # Module-level reference to the Motor client so close_database_connection()
 # can reach it. Starts as None; set inside connect_to_database(). Kept at
@@ -36,8 +38,11 @@ async def connect_to_database() -> None:
 
     Called once, from main.py's lifespan startup phase. `init_beanie`
     registers each Document subclass listed in `document_models` — this
-    is what turns `User.find_one(...)`, `user.insert()`, etc. into
-    working calls against the `users` collection.
+    is what turns `User.find_one(...)`, `CareerVaultItem.find(...)`,
+    `SkillTaxonomyEntry.find(...)`, `UserSkillProfile.find(...)`,
+    `AssessmentAttempt.find(...)`, `GuidanceRecommendation.find(...)`,
+    `RoadmapTemplate.find(...)`, `UserRoadmapProgress.find(...)`, etc.
+    into working calls against their respective collections.
     """
     global _client
     _client = AsyncIOMotorClient(settings.MONGODB_URI)
@@ -48,10 +53,12 @@ async def connect_to_database() -> None:
             CareerVaultItem,
             SkillTaxonomyEntry,
             UserSkillProfile,
-            AssessmentAttempt
+            AssessmentAttempt,
+            GuidanceRecommendation,
+            RoadmapTemplate,
+            UserRoadmapProgress,
             # Future-milestone models are added here ONLY when their
-            # milestone is built — e.g. CareerVaultItem in Milestone 2,
-            # SkillTaxonomyEntry / UserSkillProfile in Milestone 3.
+            # milestone is built — e.g. AI Mentor in Milestone 6.
         ],
     )
 

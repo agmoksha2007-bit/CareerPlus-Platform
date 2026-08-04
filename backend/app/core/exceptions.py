@@ -1,9 +1,9 @@
 """
 PURPOSE
 -------
-Domain-level exception hierarchy AND the FastAPI exception handlers that
-translate those exceptions (plus validation errors and unexpected 500s)
-into one consistent JSON error shape: {"error_code": str, "message": str}.
+Domain-level exceptions AND the FastAPI exception handlers that translate
+those exceptions (plus validation errors and unexpected 500s) into one
+consistent JSON error shape: {"error_code": str, "message": str}.
 
 Services raise AppError subclasses instead of HTTPException directly — this
 keeps business logic framework-agnostic (a service shouldn't need to know
@@ -12,8 +12,8 @@ ONE error response shape, regardless of which module or failure produced
 it.
 
 register_exception_handlers(app) is called once from main.py during app
-setup (a later step) — this file does not import or construct the FastAPI
-app itself, only the handler functions and the registration entrypoint.
+setup — this file does not import or construct the FastAPI app itself,
+only the handler functions and the registration entrypoint.
 """
 import logging
 
@@ -44,6 +44,10 @@ class AppError(Exception):
         self.message = message
         super().__init__(message)
 
+
+# ----------------------------------------------------------------------
+# Milestone 1 — Auth
+# ----------------------------------------------------------------------
 
 class EmailAlreadyRegisteredError(AppError):
     """Raised by AuthService.signup() when the email is already in use."""
@@ -79,46 +83,122 @@ class UserNotFoundError(AppError):
     status_code = status.HTTP_404_NOT_FOUND
     error_code = "user_not_found"
 
+
+# ----------------------------------------------------------------------
+# Milestone 2 — CareerVault
+# ----------------------------------------------------------------------
+
 class CareerVaultItemNotFoundError(AppError):
     """Raised when a requested CareerVault item doesn't exist, or doesn't
-    belong to the requesting user."""
-    status_code = 404
+    belong to the requesting user — the two cases are indistinguishable
+    to the caller, for the same ownership-privacy reasoning as
+    UserNotFoundError."""
+    status_code = status.HTTP_404_NOT_FOUND
     error_code = "career_vault_item_not_found"
+
+
+# ----------------------------------------------------------------------
+# Milestone 3 — Skills Engine
+# ----------------------------------------------------------------------
 
 class SkillTaxonomyEntryNotFoundError(AppError):
     """Raised when a requested taxonomy entry doesn't exist — including
     when referenced indirectly, e.g. a signal reporting a skill_id that
     has no matching taxonomy entry."""
-    status_code = 404
+    status_code = status.HTTP_404_NOT_FOUND
     error_code = "skill_taxonomy_entry_not_found"
+
 
 class SkillNameAlreadyExistsError(AppError):
     """Raised when creating a taxonomy entry whose name collides with an
     existing entry. The real enforcement is the unique index on
-    SkillTaxonomyEntry.name (Step 1) — this exists to translate the
-    resulting DuplicateKeyError into the same clean, structured error
-    shape every other domain exception in this codebase produces,
-    matching how EmailAlreadyRegisteredError relates to User.email's
-    unique index in Milestone 1."""
-    status_code = 409
+    SkillTaxonomyEntry.name — this exists to translate the resulting
+    DuplicateKeyError into the same clean, structured error shape every
+    other domain exception in this codebase produces, matching how
+    EmailAlreadyRegisteredError relates to User.email's unique index in
+    Milestone 1."""
+    status_code = status.HTTP_409_CONFLICT
     error_code = "skill_name_already_exists"
 
+
+# ----------------------------------------------------------------------
+# Milestone 4 — Career Assessment
+# ----------------------------------------------------------------------
+
 class AssessmentAttemptNotFoundError(AppError):
-    """
-    Raised when a requested assessment attempt doesn't exist,
-    or doesn't belong to the requesting user.
-    """
-    status_code = 404
+    """Raised when a requested assessment attempt doesn't exist, or
+    doesn't belong to the requesting user — indistinguishable to the
+    caller, same ownership-privacy reasoning as every prior
+    *NotFoundError in this codebase."""
+    status_code = status.HTTP_404_NOT_FOUND
     error_code = "assessment_attempt_not_found"
 
 
 class AssessmentAlreadyCompletedError(AppError):
-    """
-    Raised when attempting to modify an assessment
-    that has already been completed.
-    """
-    status_code = 409
+    """Raised when attempting to submit or update responses on an
+    attempt that already has a result — once completed, an attempt's
+    responses are frozen."""
+    status_code = status.HTTP_409_CONFLICT
     error_code = "assessment_already_completed"
+
+
+# ----------------------------------------------------------------------
+# Milestone 5 — Career Guidance
+# ----------------------------------------------------------------------
+
+class GuidanceRecommendationNotFoundError(AppError):
+    """Raised when a requested guidance recommendation doesn't exist, or
+    doesn't belong to the requesting user — indistinguishable to the
+    caller, same ownership-privacy reasoning as every prior
+    *NotFoundError in this codebase."""
+    status_code = status.HTTP_404_NOT_FOUND
+    error_code = "guidance_recommendation_not_found"
+
+
+class GuidanceGenerationError(AppError):
+    """Raised when the guidance-generation process (the
+    guidance_generation AI touchpoint, a later service-layer step)
+    fails to produce a usable recommendation — e.g. a malformed or
+    empty result from the underlying generation process. A 500, not a
+    4xx: this represents a failure in the generation process itself,
+    not a malformed client request."""
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    error_code = "guidance_generation_failed"
+
+
+# ----------------------------------------------------------------------
+# Milestone 5 — Roadmaps
+# ----------------------------------------------------------------------
+
+class RoadmapTemplateNotFoundError(AppError):
+    """Raised when a requested roadmap template doesn't exist. Templates
+    are platform-curated content with no owning user, so — unlike most
+    *NotFoundError classes in this codebase — there is no
+    ownership-privacy ambiguity here: a missing template id is simply
+    missing."""
+    status_code = status.HTTP_404_NOT_FOUND
+    error_code = "roadmap_template_not_found"
+
+
+class RoadmapProgressNotFoundError(AppError):
+    """Raised when a requested user roadmap progress record doesn't
+    exist, or doesn't belong to the requesting user — indistinguishable
+    to the caller, same ownership-privacy reasoning as every prior
+    *NotFoundError in this codebase."""
+    status_code = status.HTTP_404_NOT_FOUND
+    error_code = "roadmap_progress_not_found"
+
+
+class RoadmapEnrollmentError(AppError):
+    """Raised when enrolling a user in a roadmap template fails for a
+    business reason (a later service-layer step defines exactly which
+    conditions apply — e.g. an invalid or unusable template reference).
+    A 400, not a 404 or 409: this represents the enrollment ACTION being
+    rejected, distinct from the template simply not existing
+    (RoadmapTemplateNotFoundError already covers that case)."""
+    status_code = status.HTTP_400_BAD_REQUEST
+    error_code = "roadmap_enrollment_failed"
+
 
 # ======================================================================
 # Exception handlers

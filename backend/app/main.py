@@ -2,10 +2,18 @@
 PURPOSE
 -------
 Application entry point ONLY. This file wires together everything built in
-the previous steps of Milestone 1 — it contains no business logic, no
+the previous steps of every milestone — it contains no business logic, no
 request handling logic, and no data access of its own. Its entire job is
 assembly: create the FastAPI app, manage the database connection lifecycle,
 register middleware/handlers, and mount routers at their final paths.
+
+NOTE on router prefixes: auth, users, career_vault, skill, and
+career_assessment declare only their module-specific prefix (e.g. "/auth")
+and rely on include_router(..., prefix=settings.API_V1_PREFIX) below to
+prepend "/api/v1". career_guidance and roadmap (Milestone 5) instead
+declare their FULL prefix internally (e.g. "/api/v1/career-guidance") —
+per their own build steps — so they are mounted here WITHOUT an additional
+prefix argument, to avoid doubling up to "/api/v1/api/v1/...".
 """
 from contextlib import asynccontextmanager
 
@@ -18,7 +26,9 @@ from app.core.config import settings
 from app.core.database import close_database_connection, connect_to_database
 from app.core.exceptions import register_exception_handlers
 from app.core.limiter import limiter
-from app.routers import auth,career_assessment,career_vault, skill, users
+from app.routers import auth, career_assessment, career_vault, skill, users
+from app.routers.career_guidance import router as career_guidance_router
+from app.routers.roadmap import router as roadmap_router
 
 
 @asynccontextmanager
@@ -100,28 +110,30 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # ----------------------------------------------------------------------
 # Routers
 #
-# Both routers already declare their OWN prefix internally
-# (routers/auth.py -> "/auth", routers/users.py -> "/users"). Mounting
-# them here with prefix=settings.API_V1_PREFIX ("/api/v1") combines with
-# each router's own prefix to produce the final paths:
-#   /api/v1/auth/signup, /api/v1/auth/login, /api/v1/auth/refresh
-#   /api/v1/users/me
-# This is exactly the resolution flagged as an open question when
-# routers/auth.py was built — settings.API_V1_PREFIX is now the single
-# place that controls the API's version segment for every router mounted
-# this way.
+# auth, users, career_vault, skill, and career_assessment each declare
+# only their own module-specific prefix internally (e.g. "/auth"),
+# combined here with settings.API_V1_PREFIX ("/api/v1") to produce their
+# final paths.
+#
+# career_guidance_router and roadmap_router (Milestone 5) already
+# declare their FULL prefix internally (e.g. "/api/v1/career-guidance",
+# "/api/v1/roadmaps") — mounted here with NO additional prefix argument,
+# to avoid doubling up to "/api/v1/api/v1/...".
 # ----------------------------------------------------------------------
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
-app.include_router(career_vault.router,prefix=settings.API_V1_PREFIX,)
+app.include_router(career_vault.router, prefix=settings.API_V1_PREFIX)
 app.include_router(skill.router, prefix=settings.API_V1_PREFIX)
 app.include_router(career_assessment.router, prefix=settings.API_V1_PREFIX)
+app.include_router(career_guidance_router)
+app.include_router(roadmap_router)
+
+
 @app.get("/")
 async def root() -> dict[str, str]:
     """
     Simple unauthenticated root endpoint — useful as a quick manual
     smoke check that the process is up and serving requests, distinct
-    from a real health-check endpoint (not part of Milestone 1's
-    required scope; not invented here).
+    from a real health-check endpoint.
     """
     return {"message": "CareerPulse API is running"}
